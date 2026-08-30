@@ -1,4 +1,5 @@
 *.iml
+*.iws
 .gradle
 /local.properties
 /.idea/caches
@@ -13,3 +14,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Pastas de ambiente virtual (se usarem Python)
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Arquivos temporários ou de log
+*.log
