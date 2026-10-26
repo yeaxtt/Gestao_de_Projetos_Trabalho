@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.Calendar
 
 class FeriadoViewModel(
@@ -44,7 +45,11 @@ class FeriadoViewModel(
         _feriadosUiState.value = FeriadosUiState.Carregando
         feriadosJob = viewModelScope.launch {
             _feriadosUiState.value = try {
-                FeriadosUiState.Sucesso(repository.obterFeriados(_anoSelecionado.value))
+                // Próximos primeiro; os que já passaram ficam no fim da lista
+                val hoje = LocalDate.now().toString()
+                val (passados, proximos) = repository.obterFeriados(_anoSelecionado.value)
+                    .partition { it.data < hoje }
+                FeriadosUiState.Sucesso(proximos = proximos, passados = passados)
             } catch (e: CancellationException) {
                 // Troca de ano no meio da busca: a requisição antiga é descartada
                 throw e

@@ -121,10 +121,19 @@ fun FeriadosScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         contentPadding = PaddingValues(16.dp)
                     ) {
-                        if (feriadosUiState.feriados.isEmpty()) {
+                        if (feriadosUiState.proximos.isEmpty() && feriadosUiState.passados.isEmpty()) {
                             item { EstadoVazio("Nenhum feriado", "A BrasilAPI não retornou feriados para este ano.") }
                         }
-                        items(feriadosUiState.feriados, key = { it.data + it.nome }) { feriado ->
+                        if (feriadosUiState.proximos.isNotEmpty()) {
+                            item { TituloSecao("Próximos") }
+                        }
+                        items(feriadosUiState.proximos, key = { it.data + it.nome }) { feriado ->
+                            FeriadoCard(feriado = feriado, hoje = hoje)
+                        }
+                        if (feriadosUiState.passados.isNotEmpty()) {
+                            item { TituloSecao("Já passaram") }
+                        }
+                        items(feriadosUiState.passados, key = { it.data + it.nome }) { feriado ->
                             FeriadoCard(feriado = feriado, hoje = hoje)
                         }
                     }
@@ -155,6 +164,11 @@ fun FeriadosScreen(
             }
         }
     }
+}
+
+@Composable
+private fun TituloSecao(texto: String) {
+    Text(texto, color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
@@ -201,11 +215,12 @@ private fun FeriadosScreenPreview() {
     StudyFlowTheme {
         FeriadosScreen(
             feriadosUiState = FeriadosUiState.Sucesso(
-                listOf(
+                proximos = listOf(
                     Feriado("2026-11-02", "Finados", "national"),
                     Feriado("2026-11-15", "Proclamação da República", "national"),
                     Feriado("2026-12-25", "Natal", "national")
-                )
+                ),
+                passados = listOf(Feriado("2026-10-12", "Nossa Senhora Aparecida", "national"))
             ),
             anoAtual = 2026,
             anoSelecionado = 2026,

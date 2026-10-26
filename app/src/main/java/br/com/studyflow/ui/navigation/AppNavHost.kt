@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
@@ -91,7 +91,7 @@ fun AppNavHost(
                         navController = navController,
                         rota = AppRoute.Feriados,
                         selecionado = currentDestination?.hasRoute<AppRoute.Feriados>() == true,
-                        icone = Icons.Default.CalendarMonth,
+                        icone = Icons.Default.Celebration,
                         rotulo = "Feriados"
                     )
                 }
