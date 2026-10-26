@@ -61,11 +61,16 @@ import br.com.studyflow.ui.theme.CardShape
 import br.com.studyflow.ui.theme.ChipShape
 import br.com.studyflow.ui.theme.FieldShape
 import br.com.studyflow.ui.theme.Ink
+import br.com.studyflow.ui.util.descreverPrazo
+import br.com.studyflow.ui.util.diasAtePrazo
+import br.com.studyflow.ui.theme.Indicator
+import br.com.studyflow.ui.theme.PendingColor
+import br.com.studyflow.ui.theme.LateColor
+import br.com.studyflow.ui.theme.DoneColor
 import br.com.studyflow.ui.theme.Muted
 import br.com.studyflow.ui.theme.Navy
 import br.com.studyflow.ui.theme.OnNavy
 import br.com.studyflow.ui.theme.OutlineColor
-import br.com.studyflow.ui.theme.OutlineSoft
 import br.com.studyflow.ui.theme.Primary
 import br.com.studyflow.ui.theme.StudyFlowTheme
 import br.com.studyflow.ui.util.formatarData
@@ -156,15 +161,33 @@ fun AvaliacaoCard(
                     )
                 }
                 Spacer(Modifier.width(8.dp))
+                // Selo com cor por nível: Alta em vermelho claro, Média em amarelo, Baixa em azul
+                val rotulo = if (avaliacao.concluida) "Concluída" else Prioridade.rotulo(pontuacao)
+                val corSelo = when {
+                    avaliacao.concluida -> DoneColor
+                    rotulo == "Alta" -> LateColor
+                    rotulo == "Média" -> PendingColor
+                    else -> Indicator
+                }
                 Text(
-                    "${Prioridade.rotulo(pontuacao)} · $pontuacao", color = OutlineColor, fontSize = 13.sp,
-                    modifier = Modifier.border(1.dp, OutlineSoft, ChipShape).padding(horizontal = 10.dp, vertical = 5.dp)
+                    if (avaliacao.concluida) rotulo else "$rotulo · $pontuacao",
+                    color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.background(corSelo, ChipShape).padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
             Text(
                 "Prazo: ${formatarData(avaliacao.dataMillis)}  •  Peso: ${formatarPeso(avaliacao.peso)}",
                 color = Ink, fontSize = 14.sp
             )
+            if (!avaliacao.concluida) {
+                val dias = diasAtePrazo(avaliacao.dataMillis)
+                Text(
+                    descreverPrazo(dias),
+                    color = if (dias < 0) MaterialTheme.colorScheme.error else Ink,
+                    fontSize = 13.sp,
+                    fontWeight = if (dias <= 3) FontWeight.SemiBold else FontWeight.Normal
+                )
+            }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,

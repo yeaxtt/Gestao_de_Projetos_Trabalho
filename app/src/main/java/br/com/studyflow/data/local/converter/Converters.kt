@@ -5,7 +5,7 @@ import br.com.studyflow.model.TipoAvaliacao
 
 class Converters {
 
-    // Grava o título ("Prova", "Trabalho", "Seminário"), como na versão 1 do banco.
+    // Grava o título ("Prova", "Trabalho", "Projeto"...), como na versão 1 do banco.
     @TypeConverter
     fun fromTipoAvaliacao(tipo: TipoAvaliacao): String {
         return tipo.titulo

@@ -10,5 +10,14 @@ enum class TipoAvaliacao(val titulo: String) {
     TRABALHO("Trabalho"),
 
     @SerializedName("Seminário")
-    SEMINARIO("Seminário")
+    SEMINARIO("Seminário"),
+
+    @SerializedName("Projeto")
+    PROJETO("Projeto"),
+
+    @SerializedName("Atividade")
+    ATIVIDADE("Atividade"),
+
+    @SerializedName("Outro")
+    OUTRO("Outro")
 }

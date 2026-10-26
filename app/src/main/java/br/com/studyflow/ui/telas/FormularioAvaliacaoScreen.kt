@@ -264,10 +264,13 @@ private fun FormularioAvaliacaoConteudo(
             singleLine = true
         )
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            TipoAvaliacao.entries.forEach { opcao ->
-                ChipSegmento(opcao.titulo, tipo == opcao, Modifier.weight(1f), paddingHorizontal = 2.dp) {
-                    if (!salvando) tipo = opcao
+        // Seis tipos em duas linhas de três
+        TipoAvaliacao.entries.chunked(3).forEach { linha ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                linha.forEach { opcao ->
+                    ChipSegmento(opcao.titulo, tipo == opcao, Modifier.weight(1f), paddingHorizontal = 2.dp) {
+                        if (!salvando) tipo = opcao
+                    }
                 }
             }
         }
