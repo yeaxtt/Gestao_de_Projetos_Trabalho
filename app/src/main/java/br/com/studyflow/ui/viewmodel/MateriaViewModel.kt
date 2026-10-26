@@ -1,11 +1,11 @@
 package br.com.studyflow.ui.viewmodel
 
-import android.app.Application
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.work.WorkManager
 import br.com.studyflow.data.local.AppDatabase
 import br.com.studyflow.data.local.preferences.AppPreferencesManager
 import br.com.studyflow.data.repository.AvaliacaoRepository
@@ -20,39 +20,35 @@ import br.com.studyflow.ui.state.ListaMateriasUiState
 import br.com.studyflow.ui.state.SalvarMateriaUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-class MateriaViewModel @JvmOverloads constructor(
-    application: Application,
-    private val repository: MateriaRepository = MateriaRepository(
-        AppDatabase.obterInstancia(application).materiaDao()
-    ),
-    private val avaliacaoRepository: AvaliacaoRepository = AvaliacaoRepository(
-        AppDatabase.obterInstancia(application).avaliacaoDao()
-    ),
-    private val preferencesManager: AppPreferencesManager = AppPreferencesManager(application)
-) : AndroidViewModel(application) {
+class MateriaViewModel(
+    private val repository: MateriaRepository,
+    private val avaliacaoRepository: AvaliacaoRepository,
+    private val preferencesManager: AppPreferencesManager,
+    private val agendadorLembretes: AgendadorLembretes
+) : ViewModel() {
 
     // Estados da tela de listagem
-    var listaUiState: ListaMateriasUiState by mutableStateOf(ListaMateriasUiState.Carregando)
-        private set
+    private val _listaUiState = MutableStateFlow<ListaMateriasUiState>(ListaMateriasUiState.Carregando)
+    val listaUiState: StateFlow<ListaMateriasUiState> = _listaUiState.asStateFlow()
 
-    var exclusaoUiState: ExclusaoMateriaUiState by mutableStateOf(ExclusaoMateriaUiState.Ocioso)
-        private set
+    private val _exclusaoUiState = MutableStateFlow<ExclusaoMateriaUiState>(ExclusaoMateriaUiState.Ocioso)
+    val exclusaoUiState: StateFlow<ExclusaoMateriaUiState> = _exclusaoUiState.asStateFlow()
 
-    var ordenacaoAtual: OrdenacaoMateria by mutableStateOf(preferencesManager.obterOrdenacaoMateria())
-        private set
-
-    private val ordenacaoFlow = MutableStateFlow(preferencesManager.obterOrdenacaoMateria())
+    private val _ordenacaoAtual = MutableStateFlow(preferencesManager.obterOrdenacaoMateria())
+    val ordenacaoAtual: StateFlow<OrdenacaoMateria> = _ordenacaoAtual.asStateFlow()
 
     // Estados da tela de formulário
-    var formularioUiState: FormularioMateriaUiState by mutableStateOf(FormularioMateriaUiState.Ocioso)
-        private set
+    private val _formularioUiState = MutableStateFlow<FormularioMateriaUiState>(FormularioMateriaUiState.Ocioso)
+    val formularioUiState: StateFlow<FormularioMateriaUiState> = _formularioUiState.asStateFlow()
 
-    var salvarUiState: SalvarMateriaUiState by mutableStateOf(SalvarMateriaUiState.Ocioso)
-        private set
+    private val _salvarUiState = MutableStateFlow<SalvarMateriaUiState>(SalvarMateriaUiState.Ocioso)
+    val salvarUiState: StateFlow<SalvarMateriaUiState> = _salvarUiState.asStateFlow()
 
     private var materiasJob: Job? = null
 
@@ -69,26 +65,25 @@ class MateriaViewModel @JvmOverloads constructor(
     }
 
     fun alterarOrdenacao(novaOrdenacao: OrdenacaoMateria) {
-        ordenacaoAtual = novaOrdenacao
         preferencesManager.salvarOrdenacaoMateria(novaOrdenacao)
-        ordenacaoFlow.value = novaOrdenacao
+        _ordenacaoAtual.value = novaOrdenacao
     }
 
     private fun observarMaterias() {
         materiasJob?.cancel()
-        listaUiState = ListaMateriasUiState.Carregando
+        _listaUiState.value = ListaMateriasUiState.Carregando
         materiasJob = viewModelScope.launch {
             repository.materiasComAvaliacoesEmTempoReal
-                .combine(ordenacaoFlow) { materias, ordenacao ->
+                .combine(_ordenacaoAtual) { materias, ordenacao ->
                     ordenarMaterias(materias, ordenacao)
                 }
                 .catch {
-                    listaUiState = ListaMateriasUiState.Erro(
+                    _listaUiState.value = ListaMateriasUiState.Erro(
                         "Erro ao carregar matérias do banco local. Tente novamente."
                     )
                 }
                 .collect { materiasOrdenadas ->
-                    listaUiState = ListaMateriasUiState.Sucesso(materiasOrdenadas)
+                    _listaUiState.value = ListaMateriasUiState.Sucesso(materiasOrdenadas)
                 }
         }
     }
@@ -103,17 +98,17 @@ class MateriaViewModel @JvmOverloads constructor(
     }
 
     fun excluir(materia: Materia) {
-        exclusaoUiState = ExclusaoMateriaUiState.Excluindo
+        _exclusaoUiState.value = ExclusaoMateriaUiState.Excluindo
         viewModelScope.launch {
             try {
                 // As avaliações saem junto (ON DELETE CASCADE); antes, cancela os lembretes delas.
                 avaliacaoRepository.obterIdsPorMateria(materia.id).forEach {
-                    AgendadorLembretes.cancelar(getApplication(), it)
+                    agendadorLembretes.cancelar(it)
                 }
                 repository.removerMateria(materia)
-                exclusaoUiState = ExclusaoMateriaUiState.Sucesso
+                _exclusaoUiState.value = ExclusaoMateriaUiState.Sucesso
             } catch (_: Exception) {
-                exclusaoUiState = ExclusaoMateriaUiState.Erro(
+                _exclusaoUiState.value = ExclusaoMateriaUiState.Erro(
                     "Erro ao excluir matéria. Tente novamente."
                 )
             }
@@ -121,7 +116,7 @@ class MateriaViewModel @JvmOverloads constructor(
     }
 
     fun limparExclusaoUiState() {
-        exclusaoUiState = ExclusaoMateriaUiState.Ocioso
+        _exclusaoUiState.value = ExclusaoMateriaUiState.Ocioso
     }
 
     // ================================
@@ -129,15 +124,15 @@ class MateriaViewModel @JvmOverloads constructor(
     // ================================
 
     fun prepararNovaMateria() {
-        formularioUiState = FormularioMateriaUiState.Ocioso
-        salvarUiState = SalvarMateriaUiState.Ocioso
+        _formularioUiState.value = FormularioMateriaUiState.Ocioso
+        _salvarUiState.value = SalvarMateriaUiState.Ocioso
     }
 
     fun carregarMateria(id: Int) {
-        formularioUiState = FormularioMateriaUiState.Carregando
-        salvarUiState = SalvarMateriaUiState.Ocioso
+        _formularioUiState.value = FormularioMateriaUiState.Carregando
+        _salvarUiState.value = SalvarMateriaUiState.Ocioso
         viewModelScope.launch {
-            formularioUiState = try {
+            _formularioUiState.value = try {
                 val materia = repository.obterPorId(id)
                 if (materia != null) {
                     FormularioMateriaUiState.Sucesso(materia)
@@ -155,13 +150,13 @@ class MateriaViewModel @JvmOverloads constructor(
     }
 
     fun salvar(materia: Materia) {
-        salvarUiState = SalvarMateriaUiState.Salvando
+        _salvarUiState.value = SalvarMateriaUiState.Salvando
         viewModelScope.launch {
             try {
                 repository.salvarMateria(materia)
-                salvarUiState = SalvarMateriaUiState.Sucesso
+                _salvarUiState.value = SalvarMateriaUiState.Sucesso
             } catch (_: Exception) {
-                salvarUiState = SalvarMateriaUiState.Erro(
+                _salvarUiState.value = SalvarMateriaUiState.Erro(
                     "Erro ao salvar matéria no banco local. Tente novamente."
                 )
             }
@@ -169,6 +164,22 @@ class MateriaViewModel @JvmOverloads constructor(
     }
 
     fun limparSalvarUiState() {
-        salvarUiState = SalvarMateriaUiState.Ocioso
+        _salvarUiState.value = SalvarMateriaUiState.Ocioso
+    }
+
+    companion object {
+        // O Context só é usado aqui, para montar as dependências; a ViewModel não guarda nenhum.
+        val Factory = viewModelFactory {
+            initializer {
+                val application = checkNotNull(this[APPLICATION_KEY])
+                val database = AppDatabase.obterInstancia(application)
+                MateriaViewModel(
+                    repository = MateriaRepository(database.materiaDao()),
+                    avaliacaoRepository = AvaliacaoRepository(database.avaliacaoDao()),
+                    preferencesManager = AppPreferencesManager(application),
+                    agendadorLembretes = AgendadorLembretes(WorkManager.getInstance(application))
+                )
+            }
+        }
     }
 }

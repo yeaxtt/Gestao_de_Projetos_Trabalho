@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
@@ -41,9 +42,9 @@ import br.com.studyflow.ui.viewmodel.PainelViewModel
 
 @Composable
 fun AppNavHost(
-    painelViewModel: PainelViewModel = viewModel(),
-    materiaViewModel: MateriaViewModel = viewModel(),
-    avaliacaoViewModel: AvaliacaoViewModel = viewModel()
+    painelViewModel: PainelViewModel = viewModel(factory = PainelViewModel.Factory),
+    materiaViewModel: MateriaViewModel = viewModel(factory = MateriaViewModel.Factory),
+    avaliacaoViewModel: AvaliacaoViewModel = viewModel(factory = AvaliacaoViewModel.Factory)
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -97,8 +98,10 @@ fun AppNavHost(
             // Agrupamento: Painel
             // ============================
             composable<AppRoute.Painel> {
+                val painelUiState by painelViewModel.painelUiState.collectAsStateWithLifecycle()
+
                 PainelScreen(
-                    painelUiState = painelViewModel.painelUiState,
+                    painelUiState = painelUiState,
                     onConcluirClick = { avaliacao ->
                         avaliacaoViewModel.alternarConclusao(avaliacao)
                     },
@@ -115,10 +118,14 @@ fun AppNavHost(
             // Agrupamento: Matérias
             // ============================
             composable<AppRoute.MateriasLista> {
+                val listaUiState by materiaViewModel.listaUiState.collectAsStateWithLifecycle()
+                val exclusaoUiState by materiaViewModel.exclusaoUiState.collectAsStateWithLifecycle()
+                val ordenacaoAtual by materiaViewModel.ordenacaoAtual.collectAsStateWithLifecycle()
+
                 ListaMateriasScreen(
-                    listaUiState = materiaViewModel.listaUiState,
-                    exclusaoUiState = materiaViewModel.exclusaoUiState,
-                    ordenacaoAtual = materiaViewModel.ordenacaoAtual,
+                    listaUiState = listaUiState,
+                    exclusaoUiState = exclusaoUiState,
+                    ordenacaoAtual = ordenacaoAtual,
                     onOrdenacaoChange = { materiaViewModel.alterarOrdenacao(it) },
                     onAdicionarClick = {
                         navController.navigate(AppRoute.MateriaFormulario())
@@ -150,9 +157,12 @@ fun AppNavHost(
                     }
                 }
 
+                val formularioUiState by materiaViewModel.formularioUiState.collectAsStateWithLifecycle()
+                val salvarUiState by materiaViewModel.salvarUiState.collectAsStateWithLifecycle()
+
                 FormularioMateriaScreen(
-                    formularioUiState = materiaViewModel.formularioUiState,
-                    salvarUiState = materiaViewModel.salvarUiState,
+                    formularioUiState = formularioUiState,
+                    salvarUiState = salvarUiState,
                     onSalvarClick = { materia ->
                         materiaViewModel.salvar(materia)
                     },
@@ -180,12 +190,18 @@ fun AppNavHost(
             // Agrupamento: Avaliações
             // ============================
             composable<AppRoute.AvaliacoesLista> {
+                val listaUiState by avaliacaoViewModel.listaUiState.collectAsStateWithLifecycle()
+                val exclusaoUiState by avaliacaoViewModel.exclusaoUiState.collectAsStateWithLifecycle()
+                val ordenacaoAtual by avaliacaoViewModel.ordenacaoAtual.collectAsStateWithLifecycle()
+                val filtroStatusAtual by avaliacaoViewModel.filtroStatusAtual.collectAsStateWithLifecycle()
+                val materiaFiltroAtual by avaliacaoViewModel.materiaFiltroAtual.collectAsStateWithLifecycle()
+
                 ListaAvaliacoesScreen(
-                    listaUiState = avaliacaoViewModel.listaUiState,
-                    exclusaoUiState = avaliacaoViewModel.exclusaoUiState,
-                    ordenacaoAtual = avaliacaoViewModel.ordenacaoAtual,
-                    filtroStatusAtual = avaliacaoViewModel.filtroStatusAtual,
-                    materiaFiltroAtual = avaliacaoViewModel.materiaFiltroAtual,
+                    listaUiState = listaUiState,
+                    exclusaoUiState = exclusaoUiState,
+                    ordenacaoAtual = ordenacaoAtual,
+                    filtroStatusAtual = filtroStatusAtual,
+                    materiaFiltroAtual = materiaFiltroAtual,
                     onOrdenacaoChange = { avaliacaoViewModel.alterarOrdenacao(it) },
                     onFiltroStatusChange = { avaliacaoViewModel.alterarFiltroStatus(it) },
                     onMateriaFiltroChange = { avaliacaoViewModel.alterarMateriaFiltro(it) },
@@ -222,9 +238,12 @@ fun AppNavHost(
                     }
                 }
 
+                val formularioUiState by avaliacaoViewModel.formularioUiState.collectAsStateWithLifecycle()
+                val salvarUiState by avaliacaoViewModel.salvarUiState.collectAsStateWithLifecycle()
+
                 FormularioAvaliacaoScreen(
-                    formularioUiState = avaliacaoViewModel.formularioUiState,
-                    salvarUiState = avaliacaoViewModel.salvarUiState,
+                    formularioUiState = formularioUiState,
+                    salvarUiState = salvarUiState,
                     onSalvarClick = { avaliacao ->
                         avaliacaoViewModel.salvar(avaliacao)
                     },

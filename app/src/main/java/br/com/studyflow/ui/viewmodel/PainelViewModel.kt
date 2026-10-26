@@ -1,30 +1,29 @@
 package br.com.studyflow.ui.viewmodel
 
-import android.app.Application
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import br.com.studyflow.data.local.AppDatabase
 import br.com.studyflow.data.repository.AvaliacaoRepository
 import br.com.studyflow.model.AvaliacaoDetalhes
 import br.com.studyflow.model.Prioridade
 import br.com.studyflow.ui.state.PainelUiState
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class PainelViewModel @JvmOverloads constructor(
-    application: Application,
-    private val repository: AvaliacaoRepository = AvaliacaoRepository(
-        AppDatabase.obterInstancia(application).avaliacaoDao()
-    )
-) : AndroidViewModel(application) {
+class PainelViewModel(
+    private val repository: AvaliacaoRepository
+) : ViewModel() {
 
-    var painelUiState: PainelUiState by mutableStateOf(PainelUiState.Carregando)
-        private set
+    private val _painelUiState = MutableStateFlow<PainelUiState>(PainelUiState.Carregando)
+    val painelUiState: StateFlow<PainelUiState> = _painelUiState.asStateFlow()
 
     private var painelJob: Job? = null
 
@@ -38,16 +37,16 @@ class PainelViewModel @JvmOverloads constructor(
 
     private fun observarPainel() {
         painelJob?.cancel()
-        painelUiState = PainelUiState.Carregando
+        _painelUiState.value = PainelUiState.Carregando
         painelJob = viewModelScope.launch {
             repository.avaliacoesEmTempoReal
                 .catch {
-                    painelUiState = PainelUiState.Erro(
+                    _painelUiState.value = PainelUiState.Erro(
                         "Erro ao carregar o painel do banco local. Tente novamente."
                     )
                 }
                 .collect { avaliacoes ->
-                    painelUiState = montarPainel(avaliacoes)
+                    _painelUiState.value = montarPainel(avaliacoes)
                 }
         }
     }
@@ -70,4 +69,13 @@ class PainelViewModel @JvmOverloads constructor(
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
     }.timeInMillis
+
+    companion object {
+        val Factory = viewModelFactory {
+            initializer {
+                val application = checkNotNull(this[APPLICATION_KEY])
+                PainelViewModel(AvaliacaoRepository(AppDatabase.obterInstancia(application).avaliacaoDao()))
+            }
+        }
+    }
 }

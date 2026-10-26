@@ -1,6 +1,5 @@
 package br.com.studyflow.notifications
 
-import android.content.Context
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -8,12 +7,12 @@ import br.com.studyflow.model.Avaliacao
 import java.util.concurrent.TimeUnit
 
 // Programa lembretes locais 7, 3 e 1 dia antes do prazo de uma avaliação.
-object AgendadorLembretes {
+// Recebe o WorkManager pronto, assim a ViewModel não precisa de Context.
+class AgendadorLembretes(private val workManager: WorkManager) {
 
     private val diasAntes = listOf(7, 3, 1)
 
-    fun agendar(context: Context, avaliacao: Avaliacao) {
-        val workManager = WorkManager.getInstance(context)
+    fun agendar(avaliacao: Avaliacao) {
         diasAntes.forEach { dias ->
             val disparoEm = avaliacao.dataMillis - TimeUnit.DAYS.toMillis(dias.toLong())
             val atraso = disparoEm - System.currentTimeMillis()
@@ -33,14 +32,14 @@ object AgendadorLembretes {
         }
     }
 
-    fun cancelar(context: Context, avaliacaoId: Int) {
-        WorkManager.getInstance(context).cancelAllWorkByTag(tag(avaliacaoId))
+    fun cancelar(avaliacaoId: Int) {
+        workManager.cancelAllWorkByTag(tag(avaliacaoId))
     }
 
     // Prazo ou título podem ter mudado: refaz os lembretes; concluída não tem lembrete.
-    fun reagendar(context: Context, avaliacao: Avaliacao) {
-        cancelar(context, avaliacao.id)
-        if (!avaliacao.concluida) agendar(context, avaliacao)
+    fun reagendar(avaliacao: Avaliacao) {
+        cancelar(avaliacao.id)
+        if (!avaliacao.concluida) agendar(avaliacao)
     }
 
     private fun tag(id: Int) = "avaliacao-$id"
