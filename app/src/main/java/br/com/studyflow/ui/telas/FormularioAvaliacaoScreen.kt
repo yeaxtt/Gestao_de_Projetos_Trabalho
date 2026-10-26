@@ -205,7 +205,6 @@ private fun FormularioAvaliacaoConteudo(
     val editando = avaliacao != null
 
     // Valores de partida, usados para saber se o formulário foi alterado
-    val materiaInicial = avaliacao?.materiaId ?: materias.firstOrNull()?.id
     val pesoInicial = avaliacao?.peso?.let(::formatarPeso) ?: "5"
     val dataInicial = rememberSaveable(avaliacao) {
         avaliacao?.dataMillis ?: (System.currentTimeMillis() + 3 * 86_400_000L)
@@ -214,7 +213,9 @@ private fun FormularioAvaliacaoConteudo(
     // rememberSaveable mantém o que foi digitado ao girar a tela
     var titulo by rememberSaveable(avaliacao) { mutableStateOf(avaliacao?.titulo ?: "") }
     var tipo by rememberSaveable(avaliacao) { mutableStateOf(avaliacao?.tipo ?: TipoAvaliacao.PROVA) }
-    var materiaId by rememberSaveable(avaliacao, materias) { mutableStateOf(materiaInicial) }
+    // Sem escolha, vale a primeira matéria da lista (que pode mudar ao cadastrar uma nova)
+    var materiaEscolhida by rememberSaveable(avaliacao) { mutableStateOf(avaliacao?.materiaId) }
+    val materiaId = materiaEscolhida ?: materias.firstOrNull()?.id
     var peso by rememberSaveable(avaliacao) { mutableStateOf(pesoInicial) }
     var dataMillis by rememberSaveable(avaliacao) { mutableStateOf(dataInicial) }
     var mostrarCalendario by rememberSaveable { mutableStateOf(false) }
@@ -224,7 +225,7 @@ private fun FormularioAvaliacaoConteudo(
 
     val alterado = titulo != (avaliacao?.titulo ?: "") ||
             tipo != (avaliacao?.tipo ?: TipoAvaliacao.PROVA) ||
-            materiaId != materiaInicial ||
+            materiaEscolhida != avaliacao?.materiaId ||
             peso != pesoInicial ||
             dataMillis != dataInicial
     LaunchedEffect(alterado) { onAlteracao(alterado) }
@@ -279,7 +280,7 @@ private fun FormularioAvaliacaoConteudo(
             materias = materias,
             selecionadaId = materiaId,
             enabled = !salvando,
-            onSelecionar = { materiaId = it }
+            onSelecionar = { materiaEscolhida = it }
         )
 
         OutlinedTextField(
