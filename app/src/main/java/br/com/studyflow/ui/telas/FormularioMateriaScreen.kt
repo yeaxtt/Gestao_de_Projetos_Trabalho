@@ -1,5 +1,6 @@
 package br.com.studyflow.ui.telas
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.studyflow.model.Materia
+import br.com.studyflow.ui.components.DescartarAlteracoesDialog
 import br.com.studyflow.ui.components.navyButtonColors
 import br.com.studyflow.ui.preview.DadosExemplo
 import br.com.studyflow.ui.state.FormularioMateriaUiState
@@ -55,12 +58,28 @@ fun FormularioMateriaScreen(
     formularioUiState: FormularioMateriaUiState,
     salvarUiState: SalvarMateriaUiState,
     onSalvarClick: (Materia) -> Unit,
+    descarteVisivel: Boolean,
     onVoltarClick: () -> Unit,
+    onSolicitarDescarte: () -> Unit,
+    onCancelarDescarte: () -> Unit,
+    onConfirmarDescarte: () -> Unit,
     onTentarNovamente: () -> Unit,
     onSalvoComSucesso: () -> Unit,
     onErroMostrado: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    var alterado by rememberSaveable { mutableStateOf(false) }
+
+    // Com dados não salvos, a seta da barra e o voltar do sistema pedem confirmação
+    val voltar = { if (alterado) onSolicitarDescarte() else onVoltarClick() }
+    BackHandler(enabled = alterado) { onSolicitarDescarte() }
+
+    if (descarteVisivel) {
+        DescartarAlteracoesDialog(
+            onConfirmar = onConfirmarDescarte,
+            onDispensar = onCancelarDescarte
+        )
+    }
 
     // Reage ao estado de salvamento
     LaunchedEffect(salvarUiState) {
@@ -87,7 +106,7 @@ fun FormularioMateriaScreen(
                     Text(if (editando) "Editar matéria" else "Nova matéria")
                 },
                 navigationIcon = {
-                    IconButton(onClick = onVoltarClick) {
+                    IconButton(onClick = voltar) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Voltar"
@@ -142,7 +161,8 @@ fun FormularioMateriaScreen(
                     FormularioMateriaConteudo(
                         materia = null,
                         salvando = salvarUiState is SalvarMateriaUiState.Salvando,
-                        onSalvarClick = onSalvarClick
+                        onSalvarClick = onSalvarClick,
+                        onAlteracao = { alterado = it }
                     )
                 }
 
@@ -150,7 +170,8 @@ fun FormularioMateriaScreen(
                     FormularioMateriaConteudo(
                         materia = formularioUiState.materia,
                         salvando = salvarUiState is SalvarMateriaUiState.Salvando,
-                        onSalvarClick = onSalvarClick
+                        onSalvarClick = onSalvarClick,
+                        onAlteracao = { alterado = it }
                     )
                 }
             }
@@ -162,14 +183,19 @@ fun FormularioMateriaScreen(
 private fun FormularioMateriaConteudo(
     materia: Materia?,
     salvando: Boolean,
-    onSalvarClick: (Materia) -> Unit
+    onSalvarClick: (Materia) -> Unit,
+    onAlteracao: (Boolean) -> Unit
 ) {
     val editando = materia != null
 
-    var nome by remember(materia) { mutableStateOf(materia?.nome ?: "") }
-    var professor by remember(materia) { mutableStateOf(materia?.professor ?: "") }
+    // rememberSaveable mantém o que foi digitado ao girar a tela
+    var nome by rememberSaveable(materia) { mutableStateOf(materia?.nome ?: "") }
+    var professor by rememberSaveable(materia) { mutableStateOf(materia?.professor ?: "") }
 
-    var nomeErro by remember { mutableStateOf(false) }
+    var nomeErro by rememberSaveable { mutableStateOf(false) }
+
+    val alterado = nome != (materia?.nome ?: "") || professor != (materia?.professor ?: "")
+    LaunchedEffect(alterado) { onAlteracao(alterado) }
 
     Column(
         modifier = Modifier
@@ -248,7 +274,8 @@ private fun FormularioMateriaNovaPreview() {
         FormularioMateriaScreen(
             formularioUiState = FormularioMateriaUiState.Ocioso,
             salvarUiState = SalvarMateriaUiState.Ocioso,
-            onSalvarClick = {}, onVoltarClick = {}, onTentarNovamente = {}, onSalvoComSucesso = {}, onErroMostrado = {}
+            onSalvarClick = {}, onVoltarClick = {}, onTentarNovamente = {}, onSalvoComSucesso = {}, onErroMostrado = {},
+            descarteVisivel = false, onSolicitarDescarte = {}, onCancelarDescarte = {}, onConfirmarDescarte = {}
         )
     }
 }
@@ -260,7 +287,8 @@ private fun FormularioMateriaEditarPreview() {
         FormularioMateriaScreen(
             formularioUiState = FormularioMateriaUiState.Sucesso(DadosExemplo.materias[2]),
             salvarUiState = SalvarMateriaUiState.Ocioso,
-            onSalvarClick = {}, onVoltarClick = {}, onTentarNovamente = {}, onSalvoComSucesso = {}, onErroMostrado = {}
+            onSalvarClick = {}, onVoltarClick = {}, onTentarNovamente = {}, onSalvoComSucesso = {}, onErroMostrado = {},
+            descarteVisivel = false, onSolicitarDescarte = {}, onCancelarDescarte = {}, onConfirmarDescarte = {}
         )
     }
 }

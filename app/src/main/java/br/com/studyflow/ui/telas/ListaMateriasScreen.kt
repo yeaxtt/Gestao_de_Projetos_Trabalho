@@ -80,12 +80,14 @@ fun ListaMateriasScreen(
     onOrdenacaoChange: (OrdenacaoMateria) -> Unit,
     onAdicionarClick: () -> Unit,
     onEditarClick: (Materia) -> Unit,
+    materiaParaExcluir: Materia?,
     onExcluirClick: (Materia) -> Unit,
+    onConfirmarExclusao: () -> Unit,
+    onCancelarExclusao: () -> Unit,
     onTentarNovamente: () -> Unit,
     onExclusaoMensagemMostrada: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    var materiaParaExcluir by remember { mutableStateOf<Materia?>(null) }
 
     // Reage aos estados da exclusão exibindo Snackbar
     LaunchedEffect(exclusaoUiState) {
@@ -102,17 +104,12 @@ fun ListaMateriasScreen(
         }
     }
 
-    // Diálogo de confirmação para exclusão de matéria
+    // Diálogo de confirmação para exclusão: o item pendente fica na ViewModel
     materiaParaExcluir?.let { materia ->
         ConfirmacaoExclusaoMateriaDialog(
             materia = materia,
-            onConfirmar = {
-                onExcluirClick(materia)
-                materiaParaExcluir = null
-            },
-            onDispensar = {
-                materiaParaExcluir = null
-            }
+            onConfirmar = onConfirmarExclusao,
+            onDispensar = onCancelarExclusao
         )
     }
 
@@ -170,7 +167,7 @@ fun ListaMateriasScreen(
                             MateriaCard(
                                 detalhes = detalhes,
                                 onEditarClick = { onEditarClick(detalhes.materia) },
-                                onExcluirClick = { materiaParaExcluir = detalhes.materia }
+                                onExcluirClick = { onExcluirClick(detalhes.materia) }
                             )
                         }
                     }
@@ -344,7 +341,10 @@ private fun ListaMateriasScreenPreview() {
             onOrdenacaoChange = {},
             onAdicionarClick = {},
             onEditarClick = {},
+            materiaParaExcluir = null,
             onExcluirClick = {},
+            onConfirmarExclusao = {},
+            onCancelarExclusao = {},
             onTentarNovamente = {},
             onExclusaoMensagemMostrada = {}
         )

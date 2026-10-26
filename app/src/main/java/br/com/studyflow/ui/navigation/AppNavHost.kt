@@ -120,6 +120,7 @@ fun AppNavHost(
             composable<AppRoute.MateriasLista> {
                 val listaUiState by materiaViewModel.listaUiState.collectAsStateWithLifecycle()
                 val exclusaoUiState by materiaViewModel.exclusaoUiState.collectAsStateWithLifecycle()
+                val materiaParaExcluir by materiaViewModel.materiaParaExcluir.collectAsStateWithLifecycle()
                 val ordenacaoAtual by materiaViewModel.ordenacaoAtual.collectAsStateWithLifecycle()
 
                 ListaMateriasScreen(
@@ -133,8 +134,15 @@ fun AppNavHost(
                     onEditarClick = { materia ->
                         navController.navigate(AppRoute.MateriaFormulario(materiaId = materia.id))
                     },
+                    materiaParaExcluir = materiaParaExcluir,
                     onExcluirClick = { materia ->
-                        materiaViewModel.excluir(materia)
+                        materiaViewModel.solicitarExclusao(materia)
+                    },
+                    onConfirmarExclusao = {
+                        materiaViewModel.confirmarExclusao()
+                    },
+                    onCancelarExclusao = {
+                        materiaViewModel.cancelarExclusao()
                     },
                     onTentarNovamente = {
                         materiaViewModel.carregarMaterias()
@@ -159,14 +167,26 @@ fun AppNavHost(
 
                 val formularioUiState by materiaViewModel.formularioUiState.collectAsStateWithLifecycle()
                 val salvarUiState by materiaViewModel.salvarUiState.collectAsStateWithLifecycle()
+                val descarteVisivel by materiaViewModel.descarteVisivel.collectAsStateWithLifecycle()
 
                 FormularioMateriaScreen(
                     formularioUiState = formularioUiState,
                     salvarUiState = salvarUiState,
+                    descarteVisivel = descarteVisivel,
                     onSalvarClick = { materia ->
                         materiaViewModel.salvar(materia)
                     },
                     onVoltarClick = {
+                        navController.popBackStack()
+                    },
+                    onSolicitarDescarte = {
+                        materiaViewModel.solicitarDescarte()
+                    },
+                    onCancelarDescarte = {
+                        materiaViewModel.cancelarDescarte()
+                    },
+                    onConfirmarDescarte = {
+                        materiaViewModel.confirmarDescarte()
                         navController.popBackStack()
                     },
                     onTentarNovamente = {
@@ -192,6 +212,7 @@ fun AppNavHost(
             composable<AppRoute.AvaliacoesLista> {
                 val listaUiState by avaliacaoViewModel.listaUiState.collectAsStateWithLifecycle()
                 val exclusaoUiState by avaliacaoViewModel.exclusaoUiState.collectAsStateWithLifecycle()
+                val avaliacaoParaExcluir by avaliacaoViewModel.avaliacaoParaExcluir.collectAsStateWithLifecycle()
                 val ordenacaoAtual by avaliacaoViewModel.ordenacaoAtual.collectAsStateWithLifecycle()
                 val filtroStatusAtual by avaliacaoViewModel.filtroStatusAtual.collectAsStateWithLifecycle()
                 val materiaFiltroAtual by avaliacaoViewModel.materiaFiltroAtual.collectAsStateWithLifecycle()
@@ -214,8 +235,15 @@ fun AppNavHost(
                     onConcluirClick = { avaliacao ->
                         avaliacaoViewModel.alternarConclusao(avaliacao)
                     },
+                    avaliacaoParaExcluir = avaliacaoParaExcluir,
                     onExcluirClick = { avaliacao ->
-                        avaliacaoViewModel.excluir(avaliacao)
+                        avaliacaoViewModel.solicitarExclusao(avaliacao)
+                    },
+                    onConfirmarExclusao = {
+                        avaliacaoViewModel.confirmarExclusao()
+                    },
+                    onCancelarExclusao = {
+                        avaliacaoViewModel.cancelarExclusao()
                     },
                     onTentarNovamente = {
                         avaliacaoViewModel.carregarAvaliacoes()
@@ -240,14 +268,26 @@ fun AppNavHost(
 
                 val formularioUiState by avaliacaoViewModel.formularioUiState.collectAsStateWithLifecycle()
                 val salvarUiState by avaliacaoViewModel.salvarUiState.collectAsStateWithLifecycle()
+                val descarteVisivel by avaliacaoViewModel.descarteVisivel.collectAsStateWithLifecycle()
 
                 FormularioAvaliacaoScreen(
                     formularioUiState = formularioUiState,
                     salvarUiState = salvarUiState,
+                    descarteVisivel = descarteVisivel,
                     onSalvarClick = { avaliacao ->
                         avaliacaoViewModel.salvar(avaliacao)
                     },
                     onVoltarClick = {
+                        navController.popBackStack()
+                    },
+                    onSolicitarDescarte = {
+                        avaliacaoViewModel.solicitarDescarte()
+                    },
+                    onCancelarDescarte = {
+                        avaliacaoViewModel.cancelarDescarte()
+                    },
+                    onConfirmarDescarte = {
+                        avaliacaoViewModel.confirmarDescarte()
                         navController.popBackStack()
                     },
                     onCadastrarMateriaClick = {
