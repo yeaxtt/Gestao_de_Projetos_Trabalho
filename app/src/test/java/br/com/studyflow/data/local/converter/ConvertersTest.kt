@@ -20,8 +20,15 @@ class ConvertersTest {
     }
 
     @Test
+    fun todosOsTiposVoltamIguaisDepoisDeGravados() {
+        TipoAvaliacao.entries.forEach { tipo ->
+            assertEquals(tipo, converters.toTipoAvaliacao(converters.fromTipoAvaliacao(tipo)))
+        }
+    }
+
+    @Test
     fun valorDesconhecidoViraProva() {
-        assertEquals(TipoAvaliacao.PROVA, converters.toTipoAvaliacao("Outro"))
+        assertEquals(TipoAvaliacao.PROVA, converters.toTipoAvaliacao("Exame"))
         assertEquals(TipoAvaliacao.PROVA, converters.toTipoAvaliacao(null))
     }
 }
