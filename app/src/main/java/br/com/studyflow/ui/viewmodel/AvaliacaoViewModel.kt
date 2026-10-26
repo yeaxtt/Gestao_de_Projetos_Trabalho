@@ -1,11 +1,11 @@
 package br.com.studyflow.ui.viewmodel
 
-import android.app.Application
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.work.WorkManager
 import br.com.studyflow.data.local.AppDatabase
 import br.com.studyflow.data.local.preferences.AppPreferencesManager
 import br.com.studyflow.data.repository.AvaliacaoRepository
@@ -22,53 +22,48 @@ import br.com.studyflow.ui.state.ListaAvaliacoesUiState
 import br.com.studyflow.ui.state.SalvarAvaliacaoUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-class AvaliacaoViewModel @JvmOverloads constructor(
-    application: Application,
-    private val repository: AvaliacaoRepository = AvaliacaoRepository(
-        AppDatabase.obterInstancia(application).avaliacaoDao()
-    ),
-    private val materiaRepository: MateriaRepository = MateriaRepository(
-        AppDatabase.obterInstancia(application).materiaDao()
-    ),
-    private val preferencesManager: AppPreferencesManager = AppPreferencesManager(application)
-) : AndroidViewModel(application) {
+class AvaliacaoViewModel(
+    private val repository: AvaliacaoRepository,
+    private val materiaRepository: MateriaRepository,
+    private val preferencesManager: AppPreferencesManager,
+    private val agendadorLembretes: AgendadorLembretes
+) : ViewModel() {
 
     // ==========================================
     // Estados da tela de listagem
     // ==========================================
-    var listaUiState: ListaAvaliacoesUiState by mutableStateOf(ListaAvaliacoesUiState.Carregando)
-        private set
+    private val _listaUiState = MutableStateFlow<ListaAvaliacoesUiState>(ListaAvaliacoesUiState.Carregando)
+    val listaUiState: StateFlow<ListaAvaliacoesUiState> = _listaUiState.asStateFlow()
 
-    var exclusaoUiState: ExclusaoAvaliacaoUiState by mutableStateOf(ExclusaoAvaliacaoUiState.Ocioso)
-        private set
+    private val _exclusaoUiState = MutableStateFlow<ExclusaoAvaliacaoUiState>(ExclusaoAvaliacaoUiState.Ocioso)
+    val exclusaoUiState: StateFlow<ExclusaoAvaliacaoUiState> = _exclusaoUiState.asStateFlow()
 
-    var ordenacaoAtual: OrdenacaoAvaliacao by mutableStateOf(preferencesManager.obterOrdenacaoAvaliacao())
-        private set
+    private val _ordenacaoAtual = MutableStateFlow(preferencesManager.obterOrdenacaoAvaliacao())
+    val ordenacaoAtual: StateFlow<OrdenacaoAvaliacao> = _ordenacaoAtual.asStateFlow()
 
-    var filtroStatusAtual: FiltroStatus by mutableStateOf(FiltroStatus.TODAS)
-        private set
+    private val _filtroStatusAtual = MutableStateFlow(FiltroStatus.TODAS)
+    val filtroStatusAtual: StateFlow<FiltroStatus> = _filtroStatusAtual.asStateFlow()
 
-    var materiaFiltroAtual: Int? by mutableStateOf(null)
-        private set
+    private val _materiaFiltroAtual = MutableStateFlow<Int?>(null)
+    val materiaFiltroAtual: StateFlow<Int?> = _materiaFiltroAtual.asStateFlow()
 
-    private val ordenacaoFlow = MutableStateFlow(preferencesManager.obterOrdenacaoAvaliacao())
-    private val filtroStatusFlow = MutableStateFlow(FiltroStatus.TODAS)
-    private val materiaFiltroFlow = MutableStateFlow<Int?>(null)
     private var avaliacoesJob: Job? = null
 
     // ==========================================
     // Estados da tela de formulário
     // ==========================================
-    var formularioUiState: FormularioAvaliacaoUiState by mutableStateOf(FormularioAvaliacaoUiState.Ocioso)
-        private set
+    private val _formularioUiState = MutableStateFlow<FormularioAvaliacaoUiState>(FormularioAvaliacaoUiState.Ocioso)
+    val formularioUiState: StateFlow<FormularioAvaliacaoUiState> = _formularioUiState.asStateFlow()
 
-    var salvarUiState: SalvarAvaliacaoUiState by mutableStateOf(SalvarAvaliacaoUiState.Ocioso)
-        private set
+    private val _salvarUiState = MutableStateFlow<SalvarAvaliacaoUiState>(SalvarAvaliacaoUiState.Ocioso)
+    val salvarUiState: StateFlow<SalvarAvaliacaoUiState> = _salvarUiState.asStateFlow()
 
     init {
         observarAvaliacoes()
@@ -83,31 +78,28 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     }
 
     fun alterarOrdenacao(novaOrdenacao: OrdenacaoAvaliacao) {
-        ordenacaoAtual = novaOrdenacao
         preferencesManager.salvarOrdenacaoAvaliacao(novaOrdenacao)
-        ordenacaoFlow.value = novaOrdenacao
+        _ordenacaoAtual.value = novaOrdenacao
     }
 
     fun alterarFiltroStatus(novoFiltro: FiltroStatus) {
-        filtroStatusAtual = novoFiltro
-        filtroStatusFlow.value = novoFiltro
+        _filtroStatusAtual.value = novoFiltro
     }
 
     fun alterarMateriaFiltro(materiaId: Int?) {
-        materiaFiltroAtual = materiaId
-        materiaFiltroFlow.value = materiaId
+        _materiaFiltroAtual.value = materiaId
     }
 
     private fun observarAvaliacoes() {
         avaliacoesJob?.cancel()
-        listaUiState = ListaAvaliacoesUiState.Carregando
+        _listaUiState.value = ListaAvaliacoesUiState.Carregando
         avaliacoesJob = viewModelScope.launch {
             combine(
                 repository.avaliacoesEmTempoReal,
                 materiaRepository.materiasEmTempoReal,
-                ordenacaoFlow,
-                filtroStatusFlow,
-                materiaFiltroFlow
+                _ordenacaoAtual,
+                _filtroStatusAtual,
+                _materiaFiltroAtual
             ) { avaliacoes, materias, ordenacao, status, materiaId ->
                 // Se a matéria do filtro foi excluída, volta a mostrar todas.
                 val materiaValida = materiaId?.takeIf { id -> materias.any { it.id == id } }
@@ -121,12 +113,12 @@ class AvaliacaoViewModel @JvmOverloads constructor(
                 ListaAvaliacoesUiState.Sucesso(ordenarAvaliacoes(filtradas, ordenacao), materias)
             }
                 .catch {
-                    listaUiState = ListaAvaliacoesUiState.Erro(
+                    _listaUiState.value = ListaAvaliacoesUiState.Erro(
                         "Erro ao carregar avaliações do banco local. Tente novamente."
                     )
                 }
                 .collect { estado ->
-                    listaUiState = estado
+                    _listaUiState.value = estado
                 }
         }
     }
@@ -145,7 +137,7 @@ class AvaliacaoViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             try {
                 val atualizada = repository.alternarConclusao(avaliacao)
-                AgendadorLembretes.reagendar(getApplication(), atualizada)
+                agendadorLembretes.reagendar(atualizada)
             } catch (_: Exception) {
                 // A lista não muda; o usuário pode tentar de novo
             }
@@ -153,14 +145,14 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     }
 
     fun excluir(avaliacao: Avaliacao) {
-        exclusaoUiState = ExclusaoAvaliacaoUiState.Excluindo
+        _exclusaoUiState.value = ExclusaoAvaliacaoUiState.Excluindo
         viewModelScope.launch {
             try {
-                AgendadorLembretes.cancelar(getApplication(), avaliacao.id)
+                agendadorLembretes.cancelar(avaliacao.id)
                 repository.removerAvaliacao(avaliacao)
-                exclusaoUiState = ExclusaoAvaliacaoUiState.Sucesso
+                _exclusaoUiState.value = ExclusaoAvaliacaoUiState.Sucesso
             } catch (_: Exception) {
-                exclusaoUiState = ExclusaoAvaliacaoUiState.Erro(
+                _exclusaoUiState.value = ExclusaoAvaliacaoUiState.Erro(
                     "Erro ao excluir avaliação. Tente novamente."
                 )
             }
@@ -168,7 +160,7 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     }
 
     fun limparExclusaoUiState() {
-        exclusaoUiState = ExclusaoAvaliacaoUiState.Ocioso
+        _exclusaoUiState.value = ExclusaoAvaliacaoUiState.Ocioso
     }
 
     // ==========================================
@@ -176,10 +168,10 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     // ==========================================
 
     fun prepararNovaAvaliacao() {
-        formularioUiState = FormularioAvaliacaoUiState.Carregando
-        salvarUiState = SalvarAvaliacaoUiState.Ocioso
+        _formularioUiState.value = FormularioAvaliacaoUiState.Carregando
+        _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
         viewModelScope.launch {
-            formularioUiState = try {
+            _formularioUiState.value = try {
                 FormularioAvaliacaoUiState.Sucesso(
                     avaliacao = null,
                     materias = materiaRepository.materiasEmTempoReal.first()
@@ -193,10 +185,10 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     }
 
     fun carregarAvaliacao(id: Int) {
-        formularioUiState = FormularioAvaliacaoUiState.Carregando
-        salvarUiState = SalvarAvaliacaoUiState.Ocioso
+        _formularioUiState.value = FormularioAvaliacaoUiState.Carregando
+        _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
         viewModelScope.launch {
-            formularioUiState = try {
+            _formularioUiState.value = try {
                 val avaliacao = repository.obterPorId(id)
                 if (avaliacao != null) {
                     FormularioAvaliacaoUiState.Sucesso(
@@ -217,14 +209,14 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     }
 
     fun salvar(avaliacao: Avaliacao) {
-        salvarUiState = SalvarAvaliacaoUiState.Salvando
+        _salvarUiState.value = SalvarAvaliacaoUiState.Salvando
         viewModelScope.launch {
             try {
                 val id = repository.salvarAvaliacao(avaliacao)
-                AgendadorLembretes.reagendar(getApplication(), avaliacao.copy(id = id))
-                salvarUiState = SalvarAvaliacaoUiState.Sucesso
+                agendadorLembretes.reagendar(avaliacao.copy(id = id))
+                _salvarUiState.value = SalvarAvaliacaoUiState.Sucesso
             } catch (_: Exception) {
-                salvarUiState = SalvarAvaliacaoUiState.Erro(
+                _salvarUiState.value = SalvarAvaliacaoUiState.Erro(
                     "Erro ao salvar avaliação no banco local. Tente novamente."
                 )
             }
@@ -232,6 +224,22 @@ class AvaliacaoViewModel @JvmOverloads constructor(
     }
 
     fun limparSalvarUiState() {
-        salvarUiState = SalvarAvaliacaoUiState.Ocioso
+        _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
+    }
+
+    companion object {
+        // O Context só é usado aqui, para montar as dependências; a ViewModel não guarda nenhum.
+        val Factory = viewModelFactory {
+            initializer {
+                val application = checkNotNull(this[APPLICATION_KEY])
+                val database = AppDatabase.obterInstancia(application)
+                AvaliacaoViewModel(
+                    repository = AvaliacaoRepository(database.avaliacaoDao()),
+                    materiaRepository = MateriaRepository(database.materiaDao()),
+                    preferencesManager = AppPreferencesManager(application),
+                    agendadorLembretes = AgendadorLembretes(WorkManager.getInstance(application))
+                )
+            }
+        }
     }
 }
