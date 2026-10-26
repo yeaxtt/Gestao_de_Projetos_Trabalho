@@ -1,25 +1,12 @@
-*.iml
-*.iws
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.gradle/
+.idea/
+**/build/
 local.properties
-# Pastas de ambiente virtual (se usarem Python)
-venv/
-.venv/
-env/
-__pycache__/
-*.pyc
+*.iml
+backend/node_modules/
+backend/dist/
+backend/studyflow.sqlite*
 
-# Arquivos temporários ou de log
-*.log
+# Projeto Flutter separado (não faz parte do app Android)
+studyflow_avd/
+.kotlin/

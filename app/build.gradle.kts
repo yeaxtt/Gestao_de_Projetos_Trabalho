@@ -1,61 +1,57 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
 }
 
 android {
-    namespace = "com.example.trabalho_gerenciamento_de_projetos"
-    compileSdk = 37
-
-    defaultConfig {
-        applicationId = "com.example.trabalho_gerenciamento_de_projetos"
-        minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
+    namespace = "br.com.studyflow"
+    compileSdk = 35
 
     buildTypes {
-        release {
-            optimization {
-                enable = false
-            }
-        }
+        debug { isMinifyEnabled = false }
+        release { isMinifyEnabled = false }
     }
 
+    defaultConfig {
+        applicationId = "br.com.studyflow"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 2
+        versionName = "1.1"
+    }
+
+    buildFeatures { compose = true }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-
-    buildFeatures {
-        compose = true
-    }
+    kotlinOptions { jvmTarget = "17" }
 }
 
 dependencies {
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.activity:activity-compose:1.10.0")
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.navigation:navigation-compose:2.8.5")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
-    // Novas dependências
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
-    implementation("androidx.compose.material:material-icons-extended:1.6.8")
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
 
-    testImplementation(libs.junit)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation("com.github.skydoves:landscapist-coil3:2.4.4")
+
+    testImplementation("junit:junit:4.13.2")
 }
