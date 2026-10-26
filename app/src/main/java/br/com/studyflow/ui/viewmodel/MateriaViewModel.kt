@@ -145,16 +145,23 @@ class MateriaViewModel(
     // Operações da tela de formulário
     // ================================
 
+    // Ao girar a tela, o LaunchedEffect da navegação chama a preparação de novo. Se o mesmo
+    // formulário já está aberto, só atualiza os dados sem passar por Carregando; assim os
+    // campos guardados com rememberSaveable não saem da composição e nada do que foi digitado se perde.
     fun prepararNovaMateria() {
+        if (_formularioUiState.value is FormularioMateriaUiState.Ocioso) return
         _descarteVisivel.value = false
         _formularioUiState.value = FormularioMateriaUiState.Ocioso
         _salvarUiState.value = SalvarMateriaUiState.Ocioso
     }
 
     fun carregarMateria(id: Int) {
-        _descarteVisivel.value = false
-        _formularioUiState.value = FormularioMateriaUiState.Carregando
-        _salvarUiState.value = SalvarMateriaUiState.Ocioso
+        val estado = _formularioUiState.value
+        if (estado !is FormularioMateriaUiState.Sucesso || estado.materia.id != id) {
+            _descarteVisivel.value = false
+            _formularioUiState.value = FormularioMateriaUiState.Carregando
+            _salvarUiState.value = SalvarMateriaUiState.Ocioso
+        }
         viewModelScope.launch {
             _formularioUiState.value = try {
                 val materia = repository.obterPorId(id)

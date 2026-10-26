@@ -189,10 +189,23 @@ class AvaliacaoViewModel(
     // Operações da tela de formulário
     // ==========================================
 
-    fun prepararNovaAvaliacao() {
+    // Ao girar a tela, o LaunchedEffect da navegação chama a preparação de novo. Se o mesmo
+    // formulário já está aberto, só atualiza os dados sem passar por Carregando; assim os
+    // campos guardados com rememberSaveable não saem da composição e nada do que foi digitado se perde.
+    private fun formularioAberto(id: Int): Boolean {
+        val estado = _formularioUiState.value
+        return estado is FormularioAvaliacaoUiState.Sucesso && (estado.avaliacao?.id ?: 0) == id
+    }
+
+    private fun iniciarFormulario(id: Int) {
+        if (formularioAberto(id)) return
         _descarteVisivel.value = false
         _formularioUiState.value = FormularioAvaliacaoUiState.Carregando
         _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
+    }
+
+    fun prepararNovaAvaliacao() {
+        iniciarFormulario(0)
         viewModelScope.launch {
             _formularioUiState.value = try {
                 FormularioAvaliacaoUiState.Sucesso(
@@ -208,9 +221,7 @@ class AvaliacaoViewModel(
     }
 
     fun carregarAvaliacao(id: Int) {
-        _descarteVisivel.value = false
-        _formularioUiState.value = FormularioAvaliacaoUiState.Carregando
-        _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
+        iniciarFormulario(id)
         viewModelScope.launch {
             _formularioUiState.value = try {
                 val avaliacao = repository.obterPorId(id)
