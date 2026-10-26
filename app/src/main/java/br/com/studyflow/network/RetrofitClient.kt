@@ -10,6 +10,9 @@ object RetrofitClient {
     // Em dispositivo físico, substitua pelo IP da máquina na rede local.
     private const val BASE_URL = "http://10.0.2.2:3000/api/"
 
+    // API pública usada pela tela de feriados
+    private const val BRASIL_API_URL = "https://brasilapi.com.br/api/"
+
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
@@ -26,4 +29,12 @@ object RetrofitClient {
 
     val materiaApiService: MateriaApiService = retrofit.create(MateriaApiService::class.java)
     val avaliacaoApiService: AvaliacaoApiService = retrofit.create(AvaliacaoApiService::class.java)
+
+    private val brasilApi = Retrofit.Builder()
+        .baseUrl(BRASIL_API_URL)
+        .client(httpClient)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val feriadoApiService: FeriadoApiService = brasilApi.create(FeriadoApiService::class.java)
 }

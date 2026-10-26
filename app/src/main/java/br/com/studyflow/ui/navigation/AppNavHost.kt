@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
@@ -27,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import br.com.studyflow.ui.telas.FeriadosScreen
 import br.com.studyflow.ui.telas.FormularioAvaliacaoScreen
 import br.com.studyflow.ui.telas.FormularioMateriaScreen
 import br.com.studyflow.ui.telas.ListaAvaliacoesScreen
@@ -37,6 +39,7 @@ import br.com.studyflow.ui.theme.Ink
 import br.com.studyflow.ui.theme.Muted
 import br.com.studyflow.ui.theme.NavBarColor
 import br.com.studyflow.ui.viewmodel.AvaliacaoViewModel
+import br.com.studyflow.ui.viewmodel.FeriadoViewModel
 import br.com.studyflow.ui.viewmodel.MateriaViewModel
 import br.com.studyflow.ui.viewmodel.PainelViewModel
 
@@ -44,7 +47,8 @@ import br.com.studyflow.ui.viewmodel.PainelViewModel
 fun AppNavHost(
     painelViewModel: PainelViewModel = viewModel(factory = PainelViewModel.Factory),
     materiaViewModel: MateriaViewModel = viewModel(factory = MateriaViewModel.Factory),
-    avaliacaoViewModel: AvaliacaoViewModel = viewModel(factory = AvaliacaoViewModel.Factory)
+    avaliacaoViewModel: AvaliacaoViewModel = viewModel(factory = AvaliacaoViewModel.Factory),
+    feriadoViewModel: FeriadoViewModel = viewModel(factory = FeriadoViewModel.Factory)
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -54,7 +58,8 @@ fun AppNavHost(
     val isTopLevelRoute = currentDestination?.let { dest ->
         dest.hasRoute<AppRoute.Painel>() ||
                 dest.hasRoute<AppRoute.MateriasLista>() ||
-                dest.hasRoute<AppRoute.AvaliacoesLista>()
+                dest.hasRoute<AppRoute.AvaliacoesLista>() ||
+                dest.hasRoute<AppRoute.Feriados>()
     } ?: true
 
     Scaffold(
@@ -81,6 +86,13 @@ fun AppNavHost(
                         selecionado = currentDestination?.hasRoute<AppRoute.AvaliacoesLista>() == true,
                         icone = Icons.Default.Event,
                         rotulo = "Avaliações"
+                    )
+                    ItemNavegacao(
+                        navController = navController,
+                        rota = AppRoute.Feriados,
+                        selecionado = currentDestination?.hasRoute<AppRoute.Feriados>() == true,
+                        icone = Icons.Default.CalendarMonth,
+                        rotulo = "Feriados"
                     )
                 }
             }
@@ -251,6 +263,22 @@ fun AppNavHost(
                     onExclusaoMensagemMostrada = {
                         avaliacaoViewModel.limparExclusaoUiState()
                     }
+                )
+            }
+
+            // ============================
+            // Agrupamento: Feriados
+            // ============================
+            composable<AppRoute.Feriados> {
+                val feriadosUiState by feriadoViewModel.feriadosUiState.collectAsStateWithLifecycle()
+                val anoSelecionado by feriadoViewModel.anoSelecionado.collectAsStateWithLifecycle()
+
+                FeriadosScreen(
+                    feriadosUiState = feriadosUiState,
+                    anoAtual = feriadoViewModel.anoAtual,
+                    anoSelecionado = anoSelecionado,
+                    onAnoChange = { feriadoViewModel.alterarAno(it) },
+                    onTentarNovamente = { feriadoViewModel.carregarFeriados() }
                 )
             }
 

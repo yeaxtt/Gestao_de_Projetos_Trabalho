@@ -21,4 +21,8 @@ sealed interface AppRoute {
 
     @Serializable
     data class AvaliacaoFormulario(val avaliacaoId: Int = 0) : AppRoute
+
+    // Agrupamento de Telas: Feriados (consumo da BrasilAPI)
+    @Serializable
+    data object Feriados : AppRoute
 }
