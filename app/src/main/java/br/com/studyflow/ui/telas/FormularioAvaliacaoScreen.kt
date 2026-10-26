@@ -1,5 +1,6 @@
 package br.com.studyflow.ui.telas
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,9 +40,9 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,7 @@ import br.com.studyflow.model.Avaliacao
 import br.com.studyflow.model.Materia
 import br.com.studyflow.model.TipoAvaliacao
 import br.com.studyflow.ui.components.ChipSegmento
+import br.com.studyflow.ui.components.DescartarAlteracoesDialog
 import br.com.studyflow.ui.components.MateriaDropdown
 import br.com.studyflow.ui.components.navyButtonColors
 import br.com.studyflow.ui.preview.DadosExemplo
@@ -74,13 +76,29 @@ fun FormularioAvaliacaoScreen(
     formularioUiState: FormularioAvaliacaoUiState,
     salvarUiState: SalvarAvaliacaoUiState,
     onSalvarClick: (Avaliacao) -> Unit,
+    descarteVisivel: Boolean,
     onVoltarClick: () -> Unit,
+    onSolicitarDescarte: () -> Unit,
+    onCancelarDescarte: () -> Unit,
+    onConfirmarDescarte: () -> Unit,
     onCadastrarMateriaClick: () -> Unit,
     onTentarNovamente: () -> Unit,
     onSalvoComSucesso: () -> Unit,
     onErroMostrado: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    var alterado by rememberSaveable { mutableStateOf(false) }
+
+    // Com dados não salvos, a seta da barra e o voltar do sistema pedem confirmação
+    val voltar = { if (alterado) onSolicitarDescarte() else onVoltarClick() }
+    BackHandler(enabled = alterado) { onSolicitarDescarte() }
+
+    if (descarteVisivel) {
+        DescartarAlteracoesDialog(
+            onConfirmar = onConfirmarDescarte,
+            onDispensar = onCancelarDescarte
+        )
+    }
 
     // Reage ao estado de salvamento
     LaunchedEffect(salvarUiState) {
@@ -107,7 +125,7 @@ fun FormularioAvaliacaoScreen(
                     Text(if (editando) "Editar avaliação" else "Nova avaliação")
                 },
                 navigationIcon = {
-                    IconButton(onClick = onVoltarClick) {
+                    IconButton(onClick = voltar) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Voltar"
@@ -165,7 +183,8 @@ fun FormularioAvaliacaoScreen(
                         materias = formularioUiState.materias,
                         salvando = salvarUiState is SalvarAvaliacaoUiState.Salvando,
                         onSalvarClick = onSalvarClick,
-                        onCadastrarMateriaClick = onCadastrarMateriaClick
+                        onCadastrarMateriaClick = onCadastrarMateriaClick,
+                        onAlteracao = { alterado = it }
                     )
                 }
             }
@@ -180,21 +199,35 @@ private fun FormularioAvaliacaoConteudo(
     materias: List<Materia>,
     salvando: Boolean,
     onSalvarClick: (Avaliacao) -> Unit,
-    onCadastrarMateriaClick: () -> Unit
+    onCadastrarMateriaClick: () -> Unit,
+    onAlteracao: (Boolean) -> Unit
 ) {
     val editando = avaliacao != null
 
-    var titulo by remember(avaliacao) { mutableStateOf(avaliacao?.titulo ?: "") }
-    var tipo by remember(avaliacao) { mutableStateOf(avaliacao?.tipo ?: TipoAvaliacao.PROVA) }
-    var materiaId by remember(avaliacao, materias) { mutableStateOf(avaliacao?.materiaId ?: materias.firstOrNull()?.id) }
-    var peso by remember(avaliacao) { mutableStateOf(avaliacao?.peso?.let(::formatarPeso) ?: "5") }
-    var dataMillis by remember(avaliacao) {
-        mutableLongStateOf(avaliacao?.dataMillis ?: (System.currentTimeMillis() + 3 * 86_400_000L))
+    // Valores de partida, usados para saber se o formulário foi alterado
+    val materiaInicial = avaliacao?.materiaId ?: materias.firstOrNull()?.id
+    val pesoInicial = avaliacao?.peso?.let(::formatarPeso) ?: "5"
+    val dataInicial = rememberSaveable(avaliacao) {
+        avaliacao?.dataMillis ?: (System.currentTimeMillis() + 3 * 86_400_000L)
     }
-    var mostrarCalendario by remember { mutableStateOf(false) }
 
-    var tituloErro by remember { mutableStateOf(false) }
-    var pesoErro by remember { mutableStateOf(false) }
+    // rememberSaveable mantém o que foi digitado ao girar a tela
+    var titulo by rememberSaveable(avaliacao) { mutableStateOf(avaliacao?.titulo ?: "") }
+    var tipo by rememberSaveable(avaliacao) { mutableStateOf(avaliacao?.tipo ?: TipoAvaliacao.PROVA) }
+    var materiaId by rememberSaveable(avaliacao, materias) { mutableStateOf(materiaInicial) }
+    var peso by rememberSaveable(avaliacao) { mutableStateOf(pesoInicial) }
+    var dataMillis by rememberSaveable(avaliacao) { mutableStateOf(dataInicial) }
+    var mostrarCalendario by rememberSaveable { mutableStateOf(false) }
+
+    var tituloErro by rememberSaveable { mutableStateOf(false) }
+    var pesoErro by rememberSaveable { mutableStateOf(false) }
+
+    val alterado = titulo != (avaliacao?.titulo ?: "") ||
+            tipo != (avaliacao?.tipo ?: TipoAvaliacao.PROVA) ||
+            materiaId != materiaInicial ||
+            peso != pesoInicial ||
+            dataMillis != dataInicial
+    LaunchedEffect(alterado) { onAlteracao(alterado) }
 
     Column(
         modifier = Modifier
@@ -342,6 +375,7 @@ private fun FormularioAvaliacaoNovaPreview() {
             formularioUiState = FormularioAvaliacaoUiState.Sucesso(null, DadosExemplo.materias),
             salvarUiState = SalvarAvaliacaoUiState.Ocioso,
             onSalvarClick = {}, onVoltarClick = {}, onCadastrarMateriaClick = {},
+            descarteVisivel = false, onSolicitarDescarte = {}, onCancelarDescarte = {}, onConfirmarDescarte = {},
             onTentarNovamente = {}, onSalvoComSucesso = {}, onErroMostrado = {}
         )
     }
@@ -355,6 +389,7 @@ private fun FormularioAvaliacaoEditarPreview() {
             formularioUiState = FormularioAvaliacaoUiState.Sucesso(DadosExemplo.avaliacoes[0], DadosExemplo.materias),
             salvarUiState = SalvarAvaliacaoUiState.Ocioso,
             onSalvarClick = {}, onVoltarClick = {}, onCadastrarMateriaClick = {},
+            descarteVisivel = false, onSolicitarDescarte = {}, onCancelarDescarte = {}, onConfirmarDescarte = {},
             onTentarNovamente = {}, onSalvoComSucesso = {}, onErroMostrado = {}
         )
     }

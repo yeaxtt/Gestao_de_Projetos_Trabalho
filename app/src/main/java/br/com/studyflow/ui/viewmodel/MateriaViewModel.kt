@@ -37,6 +37,10 @@ class MateriaViewModel(
     private val _listaUiState = MutableStateFlow<ListaMateriasUiState>(ListaMateriasUiState.Carregando)
     val listaUiState: StateFlow<ListaMateriasUiState> = _listaUiState.asStateFlow()
 
+    // Item aguardando confirmação no AlertDialog de exclusão (null = diálogo fechado)
+    private val _materiaParaExcluir = MutableStateFlow<Materia?>(null)
+    val materiaParaExcluir: StateFlow<Materia?> = _materiaParaExcluir.asStateFlow()
+
     private val _exclusaoUiState = MutableStateFlow<ExclusaoMateriaUiState>(ExclusaoMateriaUiState.Ocioso)
     val exclusaoUiState: StateFlow<ExclusaoMateriaUiState> = _exclusaoUiState.asStateFlow()
 
@@ -46,6 +50,10 @@ class MateriaViewModel(
     // Estados da tela de formulário
     private val _formularioUiState = MutableStateFlow<FormularioMateriaUiState>(FormularioMateriaUiState.Ocioso)
     val formularioUiState: StateFlow<FormularioMateriaUiState> = _formularioUiState.asStateFlow()
+
+    // AlertDialog de descartar alterações do formulário
+    private val _descarteVisivel = MutableStateFlow(false)
+    val descarteVisivel: StateFlow<Boolean> = _descarteVisivel.asStateFlow()
 
     private val _salvarUiState = MutableStateFlow<SalvarMateriaUiState>(SalvarMateriaUiState.Ocioso)
     val salvarUiState: StateFlow<SalvarMateriaUiState> = _salvarUiState.asStateFlow()
@@ -97,7 +105,21 @@ class MateriaViewModel(
         }
     }
 
-    fun excluir(materia: Materia) {
+    fun solicitarExclusao(materia: Materia) {
+        _materiaParaExcluir.value = materia
+    }
+
+    fun cancelarExclusao() {
+        _materiaParaExcluir.value = null
+    }
+
+    fun confirmarExclusao() {
+        val materia = _materiaParaExcluir.value ?: return
+        _materiaParaExcluir.value = null
+        excluir(materia)
+    }
+
+    private fun excluir(materia: Materia) {
         _exclusaoUiState.value = ExclusaoMateriaUiState.Excluindo
         viewModelScope.launch {
             try {
@@ -124,11 +146,13 @@ class MateriaViewModel(
     // ================================
 
     fun prepararNovaMateria() {
+        _descarteVisivel.value = false
         _formularioUiState.value = FormularioMateriaUiState.Ocioso
         _salvarUiState.value = SalvarMateriaUiState.Ocioso
     }
 
     fun carregarMateria(id: Int) {
+        _descarteVisivel.value = false
         _formularioUiState.value = FormularioMateriaUiState.Carregando
         _salvarUiState.value = SalvarMateriaUiState.Ocioso
         viewModelScope.launch {
@@ -161,6 +185,18 @@ class MateriaViewModel(
                 )
             }
         }
+    }
+
+    fun solicitarDescarte() {
+        _descarteVisivel.value = true
+    }
+
+    fun cancelarDescarte() {
+        _descarteVisivel.value = false
+    }
+
+    fun confirmarDescarte() {
+        _descarteVisivel.value = false
     }
 
     fun limparSalvarUiState() {

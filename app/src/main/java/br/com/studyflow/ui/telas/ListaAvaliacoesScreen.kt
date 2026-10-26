@@ -81,12 +81,14 @@ fun ListaAvaliacoesScreen(
     onAdicionarClick: () -> Unit,
     onEditarClick: (Avaliacao) -> Unit,
     onConcluirClick: (Avaliacao) -> Unit,
+    avaliacaoParaExcluir: Avaliacao?,
     onExcluirClick: (Avaliacao) -> Unit,
+    onConfirmarExclusao: () -> Unit,
+    onCancelarExclusao: () -> Unit,
     onTentarNovamente: () -> Unit,
     onExclusaoMensagemMostrada: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    var avaliacaoParaExcluir by remember { mutableStateOf<Avaliacao?>(null) }
 
     // Reage aos estados da exclusão exibindo Snackbar
     LaunchedEffect(exclusaoUiState) {
@@ -103,17 +105,12 @@ fun ListaAvaliacoesScreen(
         }
     }
 
-    // Diálogo de confirmação para exclusão de avaliação
+    // Diálogo de confirmação para exclusão: o item pendente fica na ViewModel
     avaliacaoParaExcluir?.let { avaliacao ->
         ConfirmacaoExclusaoAvaliacaoDialog(
             avaliacao = avaliacao,
-            onConfirmar = {
-                onExcluirClick(avaliacao)
-                avaliacaoParaExcluir = null
-            },
-            onDispensar = {
-                avaliacaoParaExcluir = null
-            }
+            onConfirmar = onConfirmarExclusao,
+            onDispensar = onCancelarExclusao
         )
     }
 
@@ -189,7 +186,7 @@ fun ListaAvaliacoesScreen(
                                 detalhes = detalhes,
                                 onConcluirClick = { onConcluirClick(detalhes.avaliacao) },
                                 onEditarClick = { onEditarClick(detalhes.avaliacao) },
-                                onExcluirClick = { avaliacaoParaExcluir = detalhes.avaliacao }
+                                onExcluirClick = { onExcluirClick(detalhes.avaliacao) }
                             )
                         }
                     }
@@ -326,7 +323,8 @@ private fun ListaAvaliacoesScreenPreview() {
             filtroStatusAtual = FiltroStatus.TODAS,
             materiaFiltroAtual = null,
             onOrdenacaoChange = {}, onFiltroStatusChange = {}, onMateriaFiltroChange = {},
-            onAdicionarClick = {}, onEditarClick = {}, onConcluirClick = {}, onExcluirClick = {},
+            onAdicionarClick = {}, onEditarClick = {}, onConcluirClick = {},
+            avaliacaoParaExcluir = null, onExcluirClick = {}, onConfirmarExclusao = {}, onCancelarExclusao = {},
             onTentarNovamente = {}, onExclusaoMensagemMostrada = {}
         )
     }

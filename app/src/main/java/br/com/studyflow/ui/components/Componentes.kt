@@ -28,6 +28,9 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -230,6 +233,29 @@ fun MateriaDropdown(
             }
         }
     }
+}
+
+// AlertDialog usado pelos dois formulários ao sair com alterações não salvas
+@Composable
+fun DescartarAlteracoesDialog(
+    onConfirmar: () -> Unit,
+    onDispensar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDispensar,
+        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Navy) },
+        title = { Text("Descartar alterações?", color = Ink) },
+        text = { Text("Os dados preenchidos neste formulário ainda não foram salvos e serão perdidos.", color = Muted) },
+        containerColor = CardColor,
+        confirmButton = {
+            TextButton(onClick = onConfirmar) {
+                Text("Descartar", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDispensar) { Text("Continuar editando") }
+        }
+    )
 }
 
 @Composable

@@ -42,6 +42,10 @@ class AvaliacaoViewModel(
     private val _listaUiState = MutableStateFlow<ListaAvaliacoesUiState>(ListaAvaliacoesUiState.Carregando)
     val listaUiState: StateFlow<ListaAvaliacoesUiState> = _listaUiState.asStateFlow()
 
+    // Item aguardando confirmação no AlertDialog de exclusão (null = diálogo fechado)
+    private val _avaliacaoParaExcluir = MutableStateFlow<Avaliacao?>(null)
+    val avaliacaoParaExcluir: StateFlow<Avaliacao?> = _avaliacaoParaExcluir.asStateFlow()
+
     private val _exclusaoUiState = MutableStateFlow<ExclusaoAvaliacaoUiState>(ExclusaoAvaliacaoUiState.Ocioso)
     val exclusaoUiState: StateFlow<ExclusaoAvaliacaoUiState> = _exclusaoUiState.asStateFlow()
 
@@ -61,6 +65,10 @@ class AvaliacaoViewModel(
     // ==========================================
     private val _formularioUiState = MutableStateFlow<FormularioAvaliacaoUiState>(FormularioAvaliacaoUiState.Ocioso)
     val formularioUiState: StateFlow<FormularioAvaliacaoUiState> = _formularioUiState.asStateFlow()
+
+    // AlertDialog de descartar alterações do formulário
+    private val _descarteVisivel = MutableStateFlow(false)
+    val descarteVisivel: StateFlow<Boolean> = _descarteVisivel.asStateFlow()
 
     private val _salvarUiState = MutableStateFlow<SalvarAvaliacaoUiState>(SalvarAvaliacaoUiState.Ocioso)
     val salvarUiState: StateFlow<SalvarAvaliacaoUiState> = _salvarUiState.asStateFlow()
@@ -144,7 +152,21 @@ class AvaliacaoViewModel(
         }
     }
 
-    fun excluir(avaliacao: Avaliacao) {
+    fun solicitarExclusao(avaliacao: Avaliacao) {
+        _avaliacaoParaExcluir.value = avaliacao
+    }
+
+    fun cancelarExclusao() {
+        _avaliacaoParaExcluir.value = null
+    }
+
+    fun confirmarExclusao() {
+        val avaliacao = _avaliacaoParaExcluir.value ?: return
+        _avaliacaoParaExcluir.value = null
+        excluir(avaliacao)
+    }
+
+    private fun excluir(avaliacao: Avaliacao) {
         _exclusaoUiState.value = ExclusaoAvaliacaoUiState.Excluindo
         viewModelScope.launch {
             try {
@@ -168,6 +190,7 @@ class AvaliacaoViewModel(
     // ==========================================
 
     fun prepararNovaAvaliacao() {
+        _descarteVisivel.value = false
         _formularioUiState.value = FormularioAvaliacaoUiState.Carregando
         _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
         viewModelScope.launch {
@@ -185,6 +208,7 @@ class AvaliacaoViewModel(
     }
 
     fun carregarAvaliacao(id: Int) {
+        _descarteVisivel.value = false
         _formularioUiState.value = FormularioAvaliacaoUiState.Carregando
         _salvarUiState.value = SalvarAvaliacaoUiState.Ocioso
         viewModelScope.launch {
@@ -221,6 +245,18 @@ class AvaliacaoViewModel(
                 )
             }
         }
+    }
+
+    fun solicitarDescarte() {
+        _descarteVisivel.value = true
+    }
+
+    fun cancelarDescarte() {
+        _descarteVisivel.value = false
+    }
+
+    fun confirmarDescarte() {
+        _descarteVisivel.value = false
     }
 
     fun limparSalvarUiState() {
