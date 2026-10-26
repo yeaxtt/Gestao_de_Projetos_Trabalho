@@ -17,14 +17,21 @@ A estrutura do app segue o projeto `CadastroAlunos`, desenvolvido nas aulas 06 a
 | `AppDatabase.obterInstancia()` com `MIGRATION_1_2` | `AppDatabase.obterInstancia()` com `MIGRATION_1_2` |
 | `data/local/preferences/AppPreferencesManager` | `AppPreferencesManager` (ordenação das listas) |
 | `data/repository/DisciplinaRepository` (`…EmTempoReal`, `salvar…`, `remover…`, `obterPorId`) | `MateriaRepository`, `AvaliacaoRepository` |
-| `network/RetrofitClient` + `AlunoApiService` | `RetrofitClient` + `MateriaApiService`, `AvaliacaoApiService` |
-| `ui/state/ListaDisciplinasUiState`, `FormularioDisciplinaUiState`, `SalvarDisciplinaUiState`, `ExclusaoDisciplinaUiState` | os mesmos quatro estados para Matéria e Avaliação, mais `PainelUiState` |
-| `ui/viewmodel/DisciplinaViewModel` (`AndroidViewModel`, `mutableStateOf` com `private set`, `combine` com a ordenação) | `MateriaViewModel`, `AvaliacaoViewModel`, `PainelViewModel` |
-| `ui/navigation/AppRoute` (rotas `@Serializable`) + `AppNavHost` com `NavigationBar` | `AppRoute` + `AppNavHost` (Início, Matérias, Avaliações) |
+| `network/RetrofitClient` + `AlunoApiService` | `RetrofitClient` + `FeriadoApiService` (BrasilAPI), `MateriaApiService`, `AvaliacaoApiService` |
+| `ui/state/ListaDisciplinasUiState`, `FormularioDisciplinaUiState`, `SalvarDisciplinaUiState`, `ExclusaoDisciplinaUiState` | os mesmos quatro estados para Matéria e Avaliação, mais `PainelUiState` e `FeriadosUiState` |
+| `ui/viewmodel/DisciplinaViewModel` (`combine` com a ordenação) | `MateriaViewModel`, `AvaliacaoViewModel`, `PainelViewModel`, `FeriadoViewModel`, adaptadas ao barema do trabalho: herdam de `ViewModel` sem `Context`, expõem `StateFlow` e são criadas por `ViewModelProvider.Factory` |
+| `ui/navigation/AppRoute` (rotas `@Serializable`) + `AppNavHost` com `NavigationBar` | `AppRoute` + `AppNavHost` (Início, Matérias, Avaliações, Feriados) |
 | `ui/telas/ListaDisciplinasScreen`, `FormularioDisciplinaScreen`, `ConfirmacaoExclusaoDisciplinaDialog` | `ListaMateriasScreen`, `FormularioMateriaScreen`, `ConfirmacaoExclusaoMateriaDialog` (e o mesmo para avaliações), `PainelScreen` |
 | `gradle/libs.versions.toml`, AGP 9.4, Kotlin 2.2.10, SDK 37 | iguais, mais o WorkManager |
 
-O que o StudyFlow tem além do projeto das aulas: a regra de prioridade (`model/Prioridade`), o painel, os filtros por status e matéria, os lembretes com WorkManager (`notifications/`) e o visual do protótipo no Figma (`ui/theme`, `ui/components`).
+O que o StudyFlow tem além do projeto das aulas: a regra de prioridade (`model/Prioridade`), o painel, os filtros por status e matéria, os lembretes com WorkManager (`notifications/`), a aba de feriados com a BrasilAPI e o visual do protótipo no Figma (`ui/theme`, `ui/components`).
+
+### Diferenças em relação ao projeto das aulas (exigidas pelo barema)
+
+- **ViewModel sem Context.** O projeto das aulas usa `AndroidViewModel`. Aqui as ViewModels herdam de `ViewModel` e recebem repositórios, `AppPreferencesManager` e `AgendadorLembretes` pelo construtor. O `Context` só aparece na `Factory`, para montar essas dependências.
+- **Estado em StateFlow.** Em vez de `mutableStateOf` com `private set`, cada estado é um `MutableStateFlow` privado exposto como `StateFlow` (`asStateFlow()`). O `AppNavHost` coleta com `collectAsStateWithLifecycle()`.
+- **Dispatchers.IO explícito.** Os repositórios executam o Room e a rede com `withContext(Dispatchers.IO)` e `flowOn(Dispatchers.IO)`.
+- **Diálogos tratados na ViewModel.** O item aguardando exclusão (`materiaParaExcluir`, `avaliacaoParaExcluir`) e a visibilidade do diálogo de descarte (`descarteVisivel`) ficam na ViewModel, com as funções `solicitar…`, `confirmar…` e `cancelar…`.
 
 ## Fluxo de dados
 
@@ -41,13 +48,27 @@ SQLite local (studyflow.db)
 ```
 
 - As telas não conhecem o ViewModel: recebem estados e funções pelo `AppNavHost`, como no projeto das aulas.
+- Os campos dos formulários usam `rememberSaveable` e sobrevivem à rotação da tela. Se houver alteração não salva, a seta da barra superior e o voltar do sistema (`BackHandler`) abrem o diálogo "Descartar alterações?".
 - Cada formulário é uma tela própria, aberta com `AppRoute.MateriaFormulario(materiaId)` ou `AppRoute.AvaliacaoFormulario(avaliacaoId)`; o id 0 abre o cadastro e outro id abre a edição.
 - O WorkManager agenda lembretes 7, 3 e 1 dia antes do prazo. Ao concluir, editar ou excluir, eles são refeitos ou cancelados.
 
 ## Banco de dados
 
 - **Versão 2.** A versão 1 (StudyFlow V1.1) guardava `materiaId` e `dataMillis` sem chave estrangeira. A `MIGRATION_1_2` cria a nova tabela `avaliacoes` com colunas em snake_case (`materia_id`, `data_millis`) e `ON DELETE CASCADE`, copia os dados e descarta só avaliações sem matéria. Quem atualizar o app não perde nada.
-- O tipo da avaliação continua gravado como texto ("Prova", "Trabalho", "Seminário"), pelo `Converters`.
+- O tipo da avaliação é gravado como texto ("Prova", "Trabalho", "Seminário", "Projeto", "Atividade", "Outro"), pelo `Converters`. Os três últimos tipos entraram sem mudar o esquema do banco.
+
+## Consumo de API (BrasilAPI)
+
+```text
+FeriadosScreen ─▶ FeriadoViewModel ─▶ FeriadoRepository ─▶ FeriadoApiService (Retrofit + Gson)
+      ▲                  │                 (Dispatchers.IO)        GET https://brasilapi.com.br/api/feriados/v1/{ano}
+      └── FeriadosUiState: Carregando | Sucesso(proximos, passados) | Erro
+```
+
+- **Carregando:** `CircularProgressIndicator`.
+- **Sucesso:** feriados próximos primeiro, com quantos dias faltam, e depois os que já passaram.
+- **Erro:** mensagem na tela com o botão "Tentar novamente" e um Snackbar com a mesma ação.
+- O `FeriadoRepository` tem teste unitário com uma API falsa (`FeriadoRepositoryTest`).
 
 ## Backend complementar
 
