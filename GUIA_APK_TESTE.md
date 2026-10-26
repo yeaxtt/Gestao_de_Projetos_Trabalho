@@ -6,10 +6,8 @@
 2. Abra o Android Studio.
 3. Escolha **Open** e selecione a pasta `StudyFlow`.
 4. Aguarde o Gradle Sync.
-5. Se o Android Studio pedir para instalar/atualizar o Android SDK, aceite o **Android SDK 35**.
-6. Use **JDK 17** para o projeto.
-
-Se a instalação do Android Studio não localizar uma distribuição do Gradle automaticamente, abra **Settings → Build Tools → Gradle**, selecione o JDK 17 e use Gradle 8.7.
+5. Se o Android Studio pedir para instalar/atualizar o Android SDK, aceite o **Android SDK 37**.
+6. Use o JDK que vem com o Android Studio; o Gradle 9.6 é baixado sozinho pelo wrapper.
 
 ## 2. Gerar o APK de teste
 
@@ -46,8 +44,8 @@ O cliente Retrofit está preparado no projeto, mas o MVP atual não depende do b
 Verifique:
 
 - Android Studio atualizado;
-- Android SDK 35 instalado;
-- JDK 17 selecionado;
+- Android SDK 37 instalado;
+- JDK que vem com o Android Studio selecionado (Settings → Build Tools → Gradle);
 - conexão com a internet na primeira sincronização, para baixar dependências;
 - selecione a configuração `app` antes de executar.
 
