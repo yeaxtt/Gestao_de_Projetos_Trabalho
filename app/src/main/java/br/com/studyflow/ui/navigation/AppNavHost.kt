@@ -1,6 +1,7 @@
 package br.com.studyflow.ui.navigation
 
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
@@ -87,7 +88,10 @@ fun AppNavHost(
         NavHost(
             navController = navController,
             startDestination = AppRoute.Painel,
-            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+            // consumeWindowInsets: as telas não somam de novo a barra do sistema que o Scaffold daqui já descontou
+            modifier = Modifier
+                .padding(bottom = innerPadding.calculateBottomPadding())
+                .consumeWindowInsets(innerPadding)
         ) {
             // ============================
             // Agrupamento: Painel
